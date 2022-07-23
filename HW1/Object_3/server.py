@@ -17,9 +17,10 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         
         # Split HTTP request data
         HTTP_request_string = received_data.decode()            # get decoded HTTP request string data
-        request_list = HTTP_request_string.split("\r\n")        # split HTTP request into array by new line symbol
-        request_line = request_list[0].split(" ")               # HTTP request line such as: [GET, /, HTTP/1.1]
-        self.parseRequest(request_line[0], request_line[1])     # parse HTTP request line and send out through HTTP
+        requestList = HTTP_request_string.split("\r\n")        # split HTTP request into array by new line symbol
+        requestLine = requestList[0].split(" ")               # HTTP request line such as: [GET, /, HTTP/1.1]
+        encodedResponse = self.parseRequest(requestLine[0], requestLine[1])     # parse HTTP request line and send out through HTTP
+        self.request.sendall(encodedResponse)  # send completed response through HTTP
         
         # Cleanup and flusing
         sys.stdout.flush() # needed to use combine with docker
@@ -28,20 +29,24 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
     # Contruct Response according to requested MIME type and file name
     def parseRequest(self, request, path):
         path = path.lower() # case insensitive
+        # if request mothod is "GET", return 404
         if request.upper() == "GET":
             if path == "/" or path == "/index.html":
-                self.makeResponse200("text/html; charset=utf-8", readByteData("index.html"))
+                return self.prepareResponse200("text/html; charset=utf-8", readByteData("index.html"))
             elif path == "/style.css":
-                self.makeResponse200("text/css", readByteData("style.css"))
+                return self.prepareResponse200("text/css", readByteData("style.css"))
             elif path == "/functions.js":
-                self.makeResponse200("text/javascript", readByteData("functions.js"))
+                return self.prepareResponse200("text/javascript", readByteData("functions.js"))
             elif "/image/" in path:
                 imageFileName = self.getImageFileName(path)
                 extension = imageFileName.split(".")[1]
                 assert extension == "jpg", "*** File format not supported, the file must be a JPEG image ***"
-                self.makeResponse200("image/jpeg", readByteData("image/" + imageFileName))
+                return self.prepareResponse200("image/jpeg", readByteData("image/" + imageFileName))
             else:
-                self.notFound()
+                return self.prepareResponse404()
+        # else, request mothod can't be recognized, return 404
+        else:
+            return self.prepareResponse404()
 
     # Parse image request
     def getImageFileName(self, path):
@@ -49,18 +54,16 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         return imageName
 
     # Construct 200 status response and send out thorught HTTP
-    def makeResponse200(self, MIMEType, byteData):
+    def prepareResponse200(self, MIMEType, byteData):
         status = "HTTP/1.1 200 OK"
         MIMEType = "\r\nContent-Type: " + MIMEType
         noSniff = "\r\nX-Content-Type-Options: nosniff"
         contentLength = "\r\nContent-Length: " + str(len(byteData))
-        encoded_response = (status + MIMEType + noSniff + contentLength + "\r\n\r\n").encode() + byteData
-        self.request.sendall(encoded_response)      # send constructed response throught HTTP
+        return (status + MIMEType + noSniff + contentLength + "\r\n\r\n").encode() + byteData
 
     # Construct 404 status response and send out thorught HTTP
-    def notFound(self):
-        encoded_response = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: 28\r\n\r\nSorry, page cannot be found!".encode()
-        self.request.sendall(encoded_response)
+    def prepareResponse404(self):
+        return "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: 28\r\n\r\nSorry, page cannot be found!".encode()
 
 if __name__ == "__main__":
     HOST, PORT = "0.0.0.0", 8080
