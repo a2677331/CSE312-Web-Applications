@@ -1,6 +1,10 @@
 import socketserver
 import sys
 
+def readByteData(filename):
+    with open(filename, 'rb') as f:
+        return f.read()
+
 # MyTCPHandler is also a base handler inherited from BaseRequestHandler
 class MyTCPHandler(socketserver.BaseRequestHandler):
     clients = [] # if you want some data persist through all connections, use it
@@ -9,38 +13,45 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
     # while True: # means connection is established
         received_data = self.request.recv(1024)
         client_id = self.client_address[0] + ":" + str(self.client_address[1]) # 127.0.0.1:65413
-        print("Client: " + client_id + " is requesting data")            # 127.0.0.1:65413 is sending data:
+        print("Client: " + client_id + " is requesting data")                  # 127.0.0.1:65413 is sending data:
         
-        # Prepare HTTP request data
-        HTTP_request_string = received_data.decode()            # get decoded HTTP request
-        request_list = HTTP_request_string.split("\r\n")    # split HTTP request into array by new line symbol
-        request_line = request_list[0].split(" ")                   # HTTP request line: GET / HTTP/1.1
+        # Split HTTP request data
+        HTTP_request_string = received_data.decode()            # get decoded HTTP request string data
+        request_list = HTTP_request_string.split("\r\n")        # split HTTP request into array by new line symbol
+        request_line = request_list[0].split(" ")               # HTTP request line such as: [GET, /, HTTP/1.1]
+        self.parseRequest(request_line[0], request_line[1])     # parse HTTP request line and send out through HTTP
         
-        if request_line[0] == "GET":
-            if request_line[1] == "/" or request_line[1] == "/index.html":
-                self.default()
-            elif request_line[1] == "/hi":
-                self.hi()
-            elif request_line[1] == "/hello":
-                self.hello()
+        # Cleanup and flusing
+        sys.stdout.flush() # needed to use combine with docker
+        sys.stderr.flush() # whatever you have buffer, print it out to the screen
+    
+    # Contruct Response according to requested MIME type and file name
+    def parseRequest(self, request, path):
+        if request == "GET":
+            if path == "/" or path == "/index.html":
+                self.makeResponse200("text/html; charset=utf-8", readByteData("index.html"))
+            elif path == "/style.css":
+                self.makeResponse200("text/css", readByteData("style.css"))
+            elif path == "/functions.js":
+                self.makeResponse200("text/javascript", readByteData("functions.js"))
+            elif path == "/image/flamingo.jpg":
+                self.makeResponse200("image/jpeg", readByteData("image/flamingo.jpg"))
             else:
                 self.notFound()
 
-        # cleanup and flusing
-        sys.stdout.flush() # needed to use combine with docker
-        sys.stderr.flush() # whatever you have buffer, print it out to the screen
+    # Construct 200 status response and send out thorught HTTP
+    def makeResponse200(self, MIMEType, byteData):
+        status = "HTTP/1.1 200 OK"
+        MIMEType = "\r\nContent-Type: " + MIMEType
+        noSniff = "\r\nX-Content-Type-Options: nosniff"
+        contentLength = "\r\nContent-Length: " + str(len(byteData))
+        encoded_response = (status + MIMEType + noSniff + contentLength + "\r\n\r\n").encode() + byteData
+        self.request.sendall(encoded_response)      # send constructed response throught HTTP
 
-    def default(self):
-        self.request.sendall("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 8\r\n\r\nWelcome!".encode())
-    
-    def hello(self):
-        self.request.sendall("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 6\r\n\r\nHello!".encode())
-    
-    def hi(self):
-        self.request.sendall("HTTP/1.1 301 Moved Permanently\r\nContent-Length: 0\r\nLocation: /hello".encode())
-    
+    # Construct 404 status response and send out thorught HTTP
     def notFound(self):
-        self.request.sendall("HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: 28\r\n\r\nSorry, page cannot be found!".encode())
+        encoded_response = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: 28\r\n\r\nSorry, page cannot be found!".encode()
+        self.request.sendall(encoded_response)
 
 if __name__ == "__main__":
     HOST, PORT = "0.0.0.0", 8080

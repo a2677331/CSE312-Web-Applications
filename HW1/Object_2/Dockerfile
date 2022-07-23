@@ -4,9 +4,9 @@ WORKDIR /root
 COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
 
-# Allow port 5000 to be accessed 
+# Allow port 8080 to be accessed 
 # from outside the container
-EXPOSE 5000
+EXPOSE 8080
 
 COPY . .
 
