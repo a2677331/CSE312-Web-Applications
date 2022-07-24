@@ -1,7 +1,6 @@
-## My Homework Solutions for CSE312 Web Apps - University at Buffalo
-  
-### Homeworks 1-4:
-Homework 1 ✅\
-Homework 2 \
-Homework 3 \
-Homework 4
+My Homework Solutions for CSE312 Web Apps - University at Buffalo
+=====
+* [Homework 1](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1) ✅Done!
+* __Homework 2__
+* __Homework 3__
+* __Homework 4__
