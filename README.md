@@ -1,4 +1,4 @@
-## My homework solutions for the course of CSE312 Web Apps
+## My homework solutions for CSE312 Web Apps - University at Buffalo
   
 ### Homeworks 1-5:
 ✅ Homework 1 \
