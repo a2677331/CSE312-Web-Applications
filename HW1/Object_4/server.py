@@ -26,18 +26,18 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
     # while True: # means connection is established
         received_data = self.request.recv(1024)
         # client_id = self.client_address[0] + ":" + str(self.client_address[1]) # 127.0.0.1:65413
-        # print("\nClient: " + client_id + " is requesting data")                  # 127.0.0.1:65413 is sending data:
+        # print("\nClient: " + client_id + " is requesting data")                # 127.0.0.1:65413 is sending data:
         
         # Split HTTP request data
         requestData = received_data.decode()            # get decoded HTTP request string data
         print("\n______________Handling HTTP Request___________________")
         if "HTTP/1.1" not in requestData:
             print("            *** Empty request line ***")
-            print("______________________________________________________")
+            print("____________________________________________________")
             return
         else:
             print(requestData)
-        print("______________________________________________________")
+        print("_____________________________________________________")
         requestList = requestData.split("\r\n")        # split HTTP request into array by new line symbol
         requestLine = requestList[0].split(" ")               # HTTP request line such as: [GET, /, HTTP/1.1]
         method, path = requestLine[0].upper(), requestLine[1].lower() # get request method, path
@@ -61,7 +61,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             encodedResponse = self.response404()
 
         # Send out response through HTTP and cleanup
-        print("\n-------------------- Response -----------------------------")
+        print("\n-------------------- Response ---------------------------")
         print(encodedResponse.decode())
         print("----------------- End of Response -------------------------")
         self.request.sendall(encodedResponse)  # send completed response through HTTP
@@ -124,7 +124,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             if record == None:
                 return self.response404("404 Page Not Found: No record in the database")
             else:
-                print("Retreved Successfully")
                 return self.response200("application/json", json_util.dumps(record).encode())
 
         # If statments above does not return successfully, then return 404(unknown path)
