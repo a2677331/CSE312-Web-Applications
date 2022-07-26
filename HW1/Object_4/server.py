@@ -5,18 +5,34 @@ import json
 from bson import json_util
 
 # Setup MongoDB connection
-mongo_client = MongoClient("mongo") # create instance
+try:
+    mongo_client = MongoClient("mongo") # create instance
+except:
+    print("Could not connect to MongoDB")
 db = mongo_client["cse312"]         # create database
-chat_collection = db["chat"]        # create collection
+chat_collection = db["chat"]        # create chat collection
+userID_collection = db["userID"]            # create id collection
 
 # Read filename by and output bytes
 def readByteData(filename):
     with open(filename, 'rb') as f:
         return f.read()
 
-# Get next User ID, incresed by 1
+
+# id increased by 1, or create an id starting with 0, updated id will be stored in database
 def getNextID():
-    return chat_collection.count_documents({}) + 1
+    filter = {"id": getID()}
+    newValue = {"$inc": {"id": 1}}
+    userID_collection.update_one(filter, newValue) # update id by one, or id is 0 if not exists
+    return userID_collection.find_one({})["id"]
+
+# Get User ID from id collection
+def getID():
+    # ⚠️ is .count_documents({}) NOT count_documents
+    if userID_collection.count_documents({}) == 0: # if no id was found
+        userID_collection.insert_one({"id": 0}) # create id with 0
+    assert userID_collection.count_documents({}) == 1, "ID is either empty or more than 1"
+    return userID_collection.find_one({})["id"]
 
 # MyTCPHandler is also a base handler inherited from BaseRequestHandler
 class MyTCPHandler(socketserver.BaseRequestHandler):
@@ -46,9 +62,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         encodedResponse = self.parseRequestData(method, path, decodedRequestData)
 
         # Send out response through HTTP and cleanup
-        print("\n-------------------- Response ---------------------------")
-        print(encodedResponse.decode())
-        print("----------------- End of Response -------------------------")
         self.request.sendall(encodedResponse)  # send completed response through HTTP
         sys.stdout.flush() # needed to use combine with docker
         sys.stderr.flush() # whatever you have buffer, print it out to the screen
@@ -57,26 +70,25 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
     def getMethodPath(self, requestData):
         requestList = requestData.split("\r\n")          # split HTTP request into array by new line symbol
         requestLine = requestList[0].split(" ")          # HTTP request line such as: [GET, /, HTTP/1.1]
-        return requestLine[0], requestLine[1]    # get request method, path
+        return requestLine[0], requestLine[1]            # get request method, path
         
     # Parse HTTP request data and return HTTP response
     def parseRequestData(self, method, path, requestData):
         if method == "GET":
-            encodedResponse = self.parseGET(path)     
+            encodedResponse = self.parseGET(path)
         elif method == "POST":
             bodyObj = self.getRequestBody(requestData)   # convert json into python obj
-            bodyObj["id"] = getNextID()                  # assign an ID for the new user
-            chat_collection.insert_one(bodyObj)          # create records in database
-            createdRecord = chat_collection.find_one(bodyObj, {"_id": False})      # show created record and don't show "_id"
-            encodedResponse = self.parsePOST(path, json_util.dumps(createdRecord)) # Create encoded response
+            encodedResponse = self.parsePOST( bodyObj)   # Create encoded response
         elif method == "PUT":
-            bodyObj = self.getRequestBody(requestData)    # convert json into python obj
-            assert len(bodyObj) != 0, "Body content of PUT request should not be empty"
-            encodedResponse = self.parsePUT(path, bodyObj)
+            pathID = int(path.split("/users/")[1])       # get integer id from path: "users/{id}"
+            bodyObj = self.getRequestBody(requestData)   # convert json into python obj
+            encodedResponse = self.parsePUT(pathID, bodyObj)
         elif method == "DELETE":
-            encodedResponse = self.parseDELETE(path)
+            pathID = int(path.split("/users/")[1])       # get the record integer id from path
+            encodedResponse = self.parseDELETE(pathID)
         else:
             encodedResponse = self.response404()
+
         return encodedResponse
 
     # Parse out the record body in a request
@@ -87,33 +99,26 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         return json.loads(body)                                        # convert json into python obj
 
     # Parse DELETE request and create proper response
-    def parseDELETE(self, path):
+    def parseDELETE(self, pathID):
         # Assume that all {id} are well-formed integers.
-        pathID = path.split("/users/")[1]                        # get the record id from path
-        result = chat_collection.delete_one({"id": int(pathID)}) # delete record with id
+        result = chat_collection.delete_one({"id": pathID}) # delete record with id
         if result.deleted_count == 0: # number of deleted items
             return self.response404("The record with ID [" + pathID + "] was not found.")
         else:
             return self.response204()
     
     # Parse PUT request and create proper response
-    def parsePUT(self, path, recordToFind): 
-        if "/users/" in path: # to update single record from path "/users/{id}": /users/1... 
-            # Find record according to attribute values
-            record = chat_collection.find_one({"username": recordToFind["username"], "email": recordToFind["email"]})
-            # Update record if found, or return 404 page if not found
-            if record == None:  # no such record in database
-                return self.response404("404 Page Not Found: No record or the record has been deleted")
-            else:               # the record exists, update the record id with {id} from path
-                # Assume that all {id} are well-formed integers.
-                pathID = path.split("/users/")[1]    # get the record id from path
-                chat_collection.update_one(record, {"$set": {"id": int(pathID)}})   # update record with new id
-                # response 200 code and the updated record
-                updatedRecord = chat_collection.find_one({"username": recordToFind["username"], "email": recordToFind["email"]}, {"_id": False})
-                return self.response200("application/json", json_util.dumps(updatedRecord).encode())
-
-        # unknown path, return 404 page
-        return self.response404()
+    def parsePUT(self, pathID, bodyObj): 
+        result = chat_collection.find_one({"id": pathID}) # find record with {id} in the database
+        # Update record's content from with found id, or return 404 page if can't find the record
+        if result == None:
+            return self.response404("404 Page Not Found: No record or the record has been deleted")
+        else: 
+            filter = {"id": pathID}
+            newRecord = {"email": bodyObj["email"], "username": bodyObj["username"]}
+            chat_collection.update_one(filter, {"$set": newRecord})             # update new record under pathID 
+            updatedRecord = chat_collection.find_one(newRecord, {"_id": False}) # get updated record from database for response
+            return self.response200("application/json", json_util.dumps(updatedRecord).encode())
 
     # Parse GET request and create proper response
     def parseGET(self, path):
@@ -136,16 +141,16 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 return self.response404("404 Page Not Found: No record in the database")
             else:
                 return self.response200("application/json", json_util.dumps(record).encode())
-
-        # If statments above does not return successfully, then return 404(unknown path)
-        return self.response404()
+        else:
+            return self.response404() # unknown path, return 404 page
 
     # Parse POST request and create proper response
-    def parsePOST(self, path, requestBody):
-        if path == "/users":
-            return self.response201("application/json", requestBody.encode()) 
-        else: # unknown path, return 404
-            return self.response404()
+    def parsePOST(self, bodyObj):
+        bodyObj["id"] = getNextID()                  # assign an ID for the new user
+        chat_collection.insert_one(bodyObj)          # create records in database
+        createdRecord = chat_collection.find_one(bodyObj, {"_id": False})    # get created record but don't show "_id"
+        jsonBody = json_util.dumps(createdRecord)
+        return self.response201("application/json", jsonBody.encode()) 
 
     def getAllRecords(self):
         records = [] # a list of all record dicts
