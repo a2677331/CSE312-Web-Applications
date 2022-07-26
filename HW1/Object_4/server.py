@@ -28,21 +28,39 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         # client_id = self.client_address[0] + ":" + str(self.client_address[1]) # 127.0.0.1:65413
         # print("\nClient: " + client_id + " is requesting data")                # 127.0.0.1:65413 is sending data:
         
-        # Split HTTP request data
-        requestData = received_data.decode()            # get decoded HTTP request string data
+        # Get decoded HTTP request data and check if it's empty
+        decodedRequestData = received_data.decode()            # get decoded HTTP request string data
         print("\n______________Handling HTTP Request___________________")
-        if "HTTP/1.1" not in requestData:
+        if "HTTP/1.1" not in decodedRequestData:
             print("            *** Empty request line ***")
             print("____________________________________________________")
             return
         else:
-            print(requestData)
-        print("_____________________________________________________")
-        requestList = requestData.split("\r\n")        # split HTTP request into array by new line symbol
-        requestLine = requestList[0].split(" ")               # HTTP request line such as: [GET, /, HTTP/1.1]
-        method, path = requestLine[0].upper(), requestLine[1].lower() # get request method, path
+            print(decodedRequestData)
+            print("_____________________________________________________")
+    
+        # Get method and path from decoded request data
+        method, path = self.getMethodPath(decodedRequestData)
 
-        # Parse HTTP request line and prepare HTTP response
+        # Parse HTTP request line and return HTTP response
+        encodedResponse = self.parseRequestData(method, path, decodedRequestData)
+
+        # Send out response through HTTP and cleanup
+        print("\n-------------------- Response ---------------------------")
+        print(encodedResponse.decode())
+        print("----------------- End of Response -------------------------")
+        self.request.sendall(encodedResponse)  # send completed response through HTTP
+        sys.stdout.flush() # needed to use combine with docker
+        sys.stderr.flush() # whatever you have buffer, print it out to the screen
+
+    # get request method, path from request data
+    def getMethodPath(self, requestData):
+        requestList = requestData.split("\r\n")          # split HTTP request into array by new line symbol
+        requestLine = requestList[0].split(" ")          # HTTP request line such as: [GET, /, HTTP/1.1]
+        return requestLine[0], requestLine[1]    # get request method, path
+        
+    # Parse HTTP request data and return HTTP response
+    def parseRequestData(self, method, path, requestData):
         if method == "GET":
             encodedResponse = self.parseGET(path)     
         elif method == "POST":
@@ -59,21 +77,14 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             encodedResponse = self.parseDELETE(path)
         else:
             encodedResponse = self.response404()
-
-        # Send out response through HTTP and cleanup
-        print("\n-------------------- Response ---------------------------")
-        print(encodedResponse.decode())
-        print("----------------- End of Response -------------------------")
-        self.request.sendall(encodedResponse)  # send completed response through HTTP
-        sys.stdout.flush() # needed to use combine with docker
-        sys.stderr.flush() # whatever you have buffer, print it out to the screen
+        return encodedResponse
 
     # Parse out the record body in a request
     def getRequestBody(sefl, requestData):
         # Parse out the record body that is in the POST request
         body = requestData.split("\r\n\r\n")[1]
         print("HTTP request body length: " + str(len(body.encode())))  # needed to check if the request body is fully received
-        return json.loads(body)           # convert json into python obj
+        return json.loads(body)                                        # convert json into python obj
 
     # Parse DELETE request and create proper response
     def parseDELETE(self, path):
@@ -114,7 +125,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             return self.response200("text/javascript", readByteData("functions.js"))
         elif "/image/" in path:
             return self.response200("image/jpeg", readByteData("image/" + self.getImageFileName(path)))
-        elif path == "/users" or path == "/users/":     # Retrieve all records
+        elif path == "/users":     # Retrieve all records
             allRecords = self.getAllRecords()
             return self.response200("application/json", json_util.dumps(allRecords).encode())
         elif "/users/" in path: # to retriece single record from path "/users/{id}": /users/1...
@@ -131,7 +142,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
     # Parse POST request and create proper response
     def parsePOST(self, path, requestBody):
-        if path == "/users" or path == "/users/":
+        if path == "/users":
             return self.response201("application/json", requestBody.encode()) 
         else: # unknown path, return 404
             return self.response404()
@@ -178,7 +189,6 @@ if __name__ == "__main__":
     HOST, PORT = "0.0.0.0", 8000
     server = socketserver.ThreadingTCPServer( (HOST, PORT), MyTCPHandler )
     server.serve_forever()
-
 
 # sudo lsof -i:5000          ---> find process using port 5000
 # kill $PID                  ---> kill the process on that port
