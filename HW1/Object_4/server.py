@@ -4,6 +4,9 @@ from pymongo import MongoClient
 import json
 from bson import json_util
 
+NEWLINE = "\r\n"
+DOUBLE_NEWLINE = "\r\n\r\n"
+
 # Setup MongoDB connection
 try:
     mongo_client = MongoClient("mongo") # create instance
@@ -17,7 +20,6 @@ userID_collection = db["userID"]            # create id collection
 def readByteData(filename):
     with open(filename, 'rb') as f:
         return f.read()
-
 
 # id increased by 1, or create an id starting with 0, updated id will be stored in database
 def getNextID():
@@ -36,44 +38,39 @@ def getID():
 
 # MyTCPHandler is also a base handler inherited from BaseRequestHandler
 class MyTCPHandler(socketserver.BaseRequestHandler):
-    clients = [] # if you want some data persist through all connections, use it
 
     def handle(self): 
     # while True: # means connection is established
         received_data = self.request.recv(1024)
-        # client_id = self.client_address[0] + ":" + str(self.client_address[1]) # 127.0.0.1:65413
-        # print("\nClient: " + client_id + " is requesting data")                # 127.0.0.1:65413 is sending data:
+        if len(received_data) == 0:  # don't go further if empty data received
+            return
         
         # Get decoded HTTP request data and check if it's empty
         decodedRequestData = received_data.decode()            # get decoded HTTP request string data
-        print("\n______________Handling HTTP Request___________________")
-        if "HTTP/1.1" not in decodedRequestData:
-            print("            *** Empty request line ***")
-            print("____________________________________________________")
-            return
-        else:
-            print(decodedRequestData)
-            print("_____________________________________________________")
+        print("\n______________Received HTTP Request___________________")
+        print(decodedRequestData)
+        print("_________________________________________________________")
     
         # Get method and path from decoded request data
         method, path = self.getMethodPath(decodedRequestData)
 
         # Parse HTTP request line and return HTTP response
-        encodedResponse = self.parseRequestData(method, path, decodedRequestData)
+        response = self.handleRequest(method, path, decodedRequestData)
 
         # Send out response through HTTP and cleanup
-        self.request.sendall(encodedResponse)  # send completed response through HTTP
         sys.stdout.flush() # needed to use combine with docker
         sys.stderr.flush() # whatever you have buffer, print it out to the screen
+        self.request.sendall(response)  # send completed response through HTTP
 
     # get request method, path from request data
     def getMethodPath(self, requestData):
-        requestList = requestData.split("\r\n")          # split HTTP request into array by new line symbol
-        requestLine = requestList[0].split(" ")          # HTTP request line such as: [GET, /, HTTP/1.1]
-        return requestLine[0], requestLine[1]            # get request method, path
+        firstNewLineIndex = requestData.find(NEWLINE)       # get the first new line character
+        requestLine = requestData[:firstNewLineIndex]      # HTTP request line "GET / HTTP/1.1"
+        requestLineList = requestLine.split()              # split request line by space
+        return requestLineList[0], requestLineList[1]      # get request method, path
         
     # Parse HTTP request data and return HTTP response
-    def parseRequestData(self, method, path, requestData):
+    def handleRequest(self, method, path, requestData):
         if method == "GET":
             encodedResponse = self.parseGET(path)
         elif method == "POST":
@@ -93,8 +90,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
     # Parse out the record body in a request
     def getRequestBody(sefl, requestData):
-        # Parse out the record body that is in the POST request
-        body = requestData.split("\r\n\r\n")[1]
+        firstDoubleNewLineIndex = requestData.find(DOUBLE_NEWLINE)     # get request body
+        body = requestData[firstDoubleNewLineIndex + len(DOUBLE_NEWLINE) : ]
         print("HTTP request body length: " + str(len(body.encode())))  # needed to check if the request body is fully received
         return json.loads(body)                                        # convert json into python obj
 
@@ -167,26 +164,26 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
     # Construct 200 status response and send out thorught HTTP
     def response200(self, MIMEType, byteData):
         status = "HTTP/1.1 200 OK"
-        contentType = "\r\nContent-Type: " + MIMEType
-        contentLength = "\r\nContent-Length: " + str(len(byteData))
-        noSniff = "\r\nX-Content-Type-Options: nosniff"
-        return (status + contentType+ contentLength + noSniff  + "\r\n\r\n").encode() + byteData
+        contentType = NEWLINE + "Content-Type: " + MIMEType
+        contentLength = NEWLINE + "Content-Length: " + str(len(byteData))
+        noSniff = NEWLINE + "X-Content-Type-Options: nosniff"
+        return (status + contentType+ contentLength + noSniff  + DOUBLE_NEWLINE).encode() + byteData
     
     # Construct 201 status response and send out thorught HTTP
     def response201(self, MIMEType, byteData):
         status = "HTTP/1.1 201 Created"
-        contentType = "\r\nContent-Type: " + MIMEType
-        contentLength = "\r\nContent-Length: " + str(len(byteData))
-        noSniff = "\r\nX-Content-Type-Options: nosniff"
-        return (status + contentType + contentLength + noSniff + "\r\n\r\n").encode() + byteData
+        contentType = NEWLINE + "Content-Type: " + MIMEType
+        contentLength = NEWLINE + "Content-Length: " + str(len(byteData))
+        noSniff = NEWLINE + "X-Content-Type-Options: nosniff"
+        return (status + contentType + contentLength + noSniff + DOUBLE_NEWLINE).encode() + byteData
 
     # Construct 404 status response and send out thorught HTTP
     def response404(self, errMsg="Sorry, page cannot be found!"):
-        contentLength = "\r\nContent-Length: " + str(len(errMsg.encode()))
-        return ("HTTP/1.1 404 Not Found\r\nContent-Type: text/plain" + contentLength + "\r\n\r\n" + errMsg).encode()
+        contentLength = NEWLINE + "Content-Length: " + str(len(errMsg.encode()))
+        return ("HTTP/1.1 404 Not Found" + NEWLINE + "Content-Type: text/plain" + contentLength + DOUBLE_NEWLINE + errMsg).encode()
     
     def response204(self):
-        return "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n".encode()
+        return ("HTTP/1.1 204 No Content" + NEWLINE + "Content-Length: 0" + DOUBLE_NEWLINE).encode()
 
 
 
