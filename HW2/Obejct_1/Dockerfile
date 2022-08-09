@@ -9,8 +9,7 @@ COPY . .
 
 RUN pip3 install -r requirements.txt
 
-# Allow port 8080 to be accessed 
-# from outside the container
+# Expose port 8000 inside the container to outside
 EXPOSE 8000
 
 # Wait for loading database before any futher action 
