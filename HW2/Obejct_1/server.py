@@ -6,7 +6,7 @@ from bson import json_util
 from request import Request 
 from response import generate_response, readBytes, writeBytes
 from database import generateNextID, getAllRecords
-from formParser import formPartParser, formBodyParser
+from parsers import formPartParser, formBodyParser, pathParser
 from security import escapeInput
 from fileIO import storeServer, loadServer
 
@@ -84,25 +84,26 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         elif path == "/functions.js":
             return generate_response(b"200 OK", b"text/javascript; charset=utf-8", readBytes("functions.js"))
         elif "/image/" in path:
-            imageFile = "image/" + path.split("/image/")[1]
-            return generate_response(b"200 OK", b"image/jpeg", readBytes(imageFile))
+            imagePath = "image/" + pathParser(path, "/image/") # get the image path from path
+            return generate_response(b"200 OK", b"image/jpeg", readBytes(imagePath))
         elif path == "/users":     # Retrieve all records
-            return generate_response(b"200 OK", b"application/json", getAllRecords().encode())
+            allRecords = getAllRecords(chat_collection)
+            return generate_response(b"200 OK", b"application/json", allRecords.encode())
         elif "/users/" in path: # to retriece single record from path "/users/{id}": /users/1...
             # Assume that all {id} are well-formed integers.
-            path_id = int(path.split("/users/")[1])   # get the record id from path
-            record = chat_collection.find_one({"id": path_id}, {"_id": False}) # find single record according to id
+            userID = pathParser(path, "/users/")       # get the record id from path
+            record = chat_collection.find_one({"id": int(userID)}, {"_id": False}) # find single record according to id
             if record == None:
                 return generate_response(b"404 Not Found", b"text/html; charset=utf-8", b"<h1>No record in the database</h1>")
             else:
                 return generate_response(b"200 OK", b"application/json", json_util.dumps(record).encode())
-        elif path == "/hi":
-            return generate_response(b"200 OK", b"text/html; charset=utf-8", b"<h1>Hi there</h1>")
 
         return generate_response(b"404 Not Found", b"text/html; charset=utf-8", b"<h1>Sorry, page path cannot be found!</h1>")
 
     # Parse POST request and create proper response
     def parsePOST(self, path, headers, body):
+        
+        # Parse "/users" path
         if path == "/users" and headers["Content-Type"] == "application/json": # if "/users" path and json type, then add a user with new id
             bodyObj = json.loads(body.decode())                            # convert json into python obj
             bodyObj["id"] = generateNextID(userID_collection)              # assign an ID for the new user
@@ -111,8 +112,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             jsonBody = json_util.dumps(createdRecord)                       
             return generate_response(b"201 Created", b"application/json", jsonBody.encode())
 
+        # Parse multi-part form
         elif path == "/image-upload" and "multipart/form-data" in headers["Content-Type"]: # if to submit multipart form, then parse form data
-
             # Save comment to server
             formBodyList = formBodyParser(headers, body)              # parse multi-part form's body into a list
             formCommentPart = formPartParser(formBodyList[0])         # first body of multipart form is comment

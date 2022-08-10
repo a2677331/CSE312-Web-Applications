@@ -47,7 +47,11 @@ def formBodyParser(headers, body):
     splits = body.split(boundaryBytes) 
     bodySplits = splits[1:-1]   # don't want first empty part and last part that contains part of last boundary
     return bodySplits
- 
+
+# return {var} from www.example.com/prefix/{var}, var contains no "/"
+def pathParser(path, prefix):
+    startingIndex = path.find(prefix)
+    return path[startingIndex + len(prefix):].replace("/", "")
     
 def getBoundary(headers): # -> String
     contentType = headers["Content-Type"]

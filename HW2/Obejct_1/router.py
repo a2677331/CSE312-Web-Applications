@@ -74,10 +74,6 @@ if __name__ == "__main__":
 
 
         
-  
-
-    
-
     
     
 # def add_users_paths(router: Router):
