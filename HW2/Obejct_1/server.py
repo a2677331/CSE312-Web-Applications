@@ -4,11 +4,11 @@ from pymongo import MongoClient
 import json
 from bson import json_util
 from request import Request 
-from response import generate_response, readByteFrom, writeBytesTo
-from database import generateNextID
-from parseForm import Form, getBoundaryAsBytes
+from response import generate_response, readBytes, writeBytes
+from database import generateNextID, getAllRecords
+from formParser import formPartParser, formBodyParser
 from security import escapeInput
-from fileIO import storeToServer, loadFromServer
+from fileIO import storeServer, loadServer
 
 # MyTCPHandler is also a base handler inherited from BaseRequestHandler
 class MyTCPHandler(socketserver.BaseRequestHandler):
@@ -76,18 +76,18 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
     # Parse GET request and create proper response
     def parseGET(self, path):
         if path == "/":
-            return generate_response(b"200 OK", b"text/html; charset=utf-8", readByteFrom("index.html"))
+            return generate_response(b"200 OK", b"text/html; charset=utf-8", readBytes("index.html"))
         elif path == "/index.html":
-            return generate_response(b"200 OK", b"text/html; charset=utf-8", readByteFrom("index.html"))
+            return generate_response(b"200 OK", b"text/html; charset=utf-8", readBytes("index.html"))
         elif path == "/style.css":
-            return generate_response(b"200 OK", b"text/css", readByteFrom("style.css"))
+            return generate_response(b"200 OK", b"text/css; charset=utf-8", readBytes("style.css"))
         elif path == "/functions.js":
-            return generate_response(b"200 OK", b"text/javascript", readByteFrom("functions.js"))
+            return generate_response(b"200 OK", b"text/javascript; charset=utf-8", readBytes("functions.js"))
         elif "/image/" in path:
             imageFile = "image/" + path.split("/image/")[1]
-            return generate_response(b"200 OK", b"image/jpeg", readByteFrom(imageFile))
+            return generate_response(b"200 OK", b"image/jpeg", readBytes(imageFile))
         elif path == "/users":     # Retrieve all records
-            return generate_response(b"200 OK", b"application/json", self.getAllRecords().encode())
+            return generate_response(b"200 OK", b"application/json", getAllRecords().encode())
         elif "/users/" in path: # to retriece single record from path "/users/{id}": /users/1...
             # Assume that all {id} are well-formed integers.
             path_id = int(path.split("/users/")[1])   # get the record id from path
@@ -112,32 +112,28 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             return generate_response(b"201 Created", b"application/json", jsonBody.encode())
 
         elif path == "/image-upload" and "multipart/form-data" in headers["Content-Type"]: # if to submit multipart form, then parse form data
-            boundary_as_bytes = getBoundaryAsBytes(headers)
-            splits = body.split(boundary_as_bytes)
-            bodySplits = splits[1:-1]   # don't want first empty part and last part that contains part of last boundary
-            commentPart = Form(bodySplits[0])
-            if commentPart.name == "comment":
-                commentBytes = escapeInput(commentPart.content) # escape user submissions of "&", "<" and ">"
-                storeToServer("comments.txt", commentBytes)        # store each comment into server
 
-                # render template file with comments
-                templateBytes = readByteFrom("template.html")
-                loadedCommentBytes = loadFromServer("comments.txt").replace(b"\n", b"<br>") # replace all newline chars with html format
-                replaced = templateBytes.replace(b"{{chats}}", loadedCommentBytes) # replace {{chats}} with loaded comments
-                writeBytesTo("index.html", replaced)                               # replace index.html with new render template
-                return generate_response(b"301 Moved Permanently", b" ", b" ", b"/")
-            
+            # Save comment to server
+            formBodyList = formBodyParser(headers, body)              # parse multi-part form's body into a list
+            formCommentPart = formPartParser(formBodyList[0])         # first body of multipart form is comment
+            escapedComment = escapeInput(formCommentPart.content)     # Security: escape user submissions of "&", "<" and ">"
+            storeServer("comments.txt", escapedComment)               # Store each comment on server
+
+            # Load comment from server
+            commentBytes = loadServer("comments.txt").replace(b"\n", b"<br>") # make sure outputed comment show newline format
+
+            # Return rendered template file with comments
+            templateBytes = readBytes("template.html")
+            rendered = templateBytes.replace(b"{{chats}}", commentBytes)      # replace {{chats}} with loaded comments
+            writeBytes("index.html", rendered)                                # replace index.html with new render template
+            return generate_response(b"301 Moved Permanently", b" ", b" ", b"/")
+         
         return generate_response(b"404 Not Found", b"text/html; charset=utf-8", b"<h1>404 Not Found at parsePOST()</h1>")
 
-    # retrieve all records from database
-    def getAllRecords(self):
-        records = [] # a list of all record dicts
-        for record in chat_collection.find({}, {"_id": False}):
-            records.append(record)
-        print(records) # print all records
-        return json_util.dumps(records) # return as json object
+
 
 if __name__ == "__main__":
+
     # Setup database connection
     mongo_client = MongoClient("mongo") # create instance
     db = mongo_client["cse312"]         # create database

@@ -1,11 +1,11 @@
 import os
 
-def storeToServer(filename, content): # (string, bytes) -> bytes
+def storeServer(filename, content): # (string, bytes) -> bytes
     exist = os.path.exists(filename)
     with open(filename, 'ab' if exist else 'wb') as f:
             f.write(content)
 
-def loadFromServer(filename): # -> bytes
+def loadServer(filename): # -> bytes
     assert os.path.exists(filename) == True, "The file: " + filename + " does not exist."
     with open(filename, 'rb') as f:
         return f.read()

@@ -1,6 +1,6 @@
 
 # Construct 200 status response and send out thorught HTTP
-def generate_response(status, MIMEType=b'', body=b'', location=b""):
+def generate_response(status, MIMEType=b'text/plain; charset=utf-8', body=b"", location=b""):
     if len(MIMEType) == 0 and len(body) == 0:     # 204 No Content
         return b"HTTP/1.1 " + status + b"\r\nContent-Length: 0"
     else:
@@ -15,10 +15,10 @@ def generate_response(status, MIMEType=b'', body=b'', location=b""):
         return response # raw bytes
 
 # Read filename by and output bytes
-def readByteFrom(filename):
+def readBytes(filename):
     with open(filename, 'rb') as f:
         return f.read()
     
-def writeBytesTo(filename, content):
+def writeBytes(filename, content):
     with open(filename, "wb") as f:
         return f.write(content)
