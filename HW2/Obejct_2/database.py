@@ -1,5 +1,19 @@
 from bson import json_util
 import os
+from pymongo import MongoClient
+
+# Setup database connection
+def get_database(collection: str):
+    # Provide the mongodb atlas url to connect python to mongodb using pymongo
+    CONNECTION_STRING = "mongo"
+    CONNECTION_STRING2 = "mongodb+srv://a2677331:Aa089089@cluster0.fx2hgh6.mongodb.net/?retryWrites=true&w=majority"
+
+    # Create a connection using MongoClient
+    mongo_client = MongoClient(CONNECTION_STRING2) # create instance
+    db = mongo_client["CS312"]
+
+    # Create the database
+    return db[collection]
 
 # id increased by 1, or create an id starting with 0, updated id will be stored in database
 def generateNextID(ID_collection):
