@@ -1,7 +1,4 @@
 from re import A
-from database import store_bytes_server_append, load_bytes_server
-from response import generate_response, readBytes, writeBytes
-
 
 start_loop = "{{loop}}"
 end_loop = "{{end_loop}}"
@@ -53,14 +50,14 @@ class formPartBodyParser:
 def formWholeBodyParser(headers, body): # -> list of form part bodys
     boundaryBytes = getBoundary(headers).encode()
     splits = body.split(boundaryBytes)
-    assertAns = "Body content splits number: " + str(len(splits)) +  ", please check your form body"        #???????????????????????????????????????????????????????????????????????????????????????
+    assertAns = "Body content splits number: " + str(len(splits)) +  ", please check your form body"     #???????????????????????????????????????????????????????????????????????????????????????
     assert len(splits) == 4, assertAns
     bodySplits = splits[1:-1]   # don't want first empty part and last part that contains part of last boundary
-    return bodySplits
+    return bodySplits # [comment part, image part]
 
 # return loop placeholder with rendered loop content -> String
 def renderLoop(loop_template, path, comment):
-    loop_template = loop_template.replace("{{image_path}}", "\"" + path + "\"") # replace with image path
+    loop_template = loop_template.replace("{{image_path}}", "\"" + path + "\"" + "class=\"my_image\"") # replace with "image path"
     loop_template = loop_template.replace("{{comment}}", comment) # replace with comment
     loop_template = loop_template.lstrip(start_loop) # remove {{loop}}
     loop_template = loop_template.rstrip(end_loop)   # remove {{end_loop}}
@@ -74,10 +71,10 @@ def extractLoop(filename, prefix, suffix):
         endIndex = content.find(suffix)
         return content[startIndex:endIndex+len(suffix)] # -> String
 
-# return {var} from www.example.com/prefix/{var}, var contains no "/"
-def pathParser(path, prefix):
-    startingIndex = path.find(prefix)
-    return path[startingIndex + len(prefix):].replace("/", "")
+# return {var} from www.example.com/prefix/{var}
+def getStringAfter(prefix, path):
+    startIndex = path.find(prefix)
+    return path[startIndex + len(prefix):]
     
 def getBoundary(headers): # -> String
     contentType = headers["Content-Type"]
@@ -92,10 +89,4 @@ def getBoundary(headers): # -> String
 # renderLoop = renderLoop(template_loop, "cat", "12312312")
 # print("rendered loop: ")
 # print(renderLoop)
-    
-
-
-
-        
-        
  

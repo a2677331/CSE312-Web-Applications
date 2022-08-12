@@ -1,12 +1,14 @@
 import socketserver
 import sys
 import json
+from tkinter import X
 from bson import json_util
 from request import Request, getParsedRequest
-from response import generate_response, readBytes, writeBytes
-from database import generateNextID, getAllRecords, store_bytes_server_append, get_database
-from parsers import formPartBodyParser, formWholeBodyParser, pathParser, renderLoop, extractLoop
+from response import generate_response
+from database import generateNextID, getAllRecords, get_database, readBytes, writeBytes
+from parsers import formPartBodyParser, formWholeBodyParser, getStringAfter, renderLoop, extractLoop
 from security import escapeInput
+import re
     
 
 # MyTCPHandler is also a base handler inherited from BaseRequestHandler
@@ -99,47 +101,54 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
     # Parse GET request and create proper response
     def parseGET(self, path):
+        
+        response = generate_response(b"404 Not Found", b"text/html; charset=utf-8", b"<h1>404 Not Found: parseGET Method </h1>")
+        
+        # for image requests
+        # for video requests
+        # for audio requests
+        # for html requests
+        # for js requests
+        # for css requests
 
-        if path == "/":
-            return generate_response(b"200 OK", b"text/html; charset=utf-8", readBytes("index.html"))
-        elif path == "/index.html":
-            return generate_response(b"200 OK", b"text/html; charset=utf-8", readBytes("index.html"))
+        if path == "/" or path == "/index.html":
+            response = generate_response(b"200 OK", b"text/html; charset=utf-8", readBytes("index.html"))
         elif path == "/style.css":
-            return generate_response(b"200 OK", b"text/css; charset=utf-8", readBytes("style.css"))
+            response = generate_response(b"200 OK", b"text/css; charset=utf-8", readBytes("style.css"))
         elif path == "/functions.js":
-            return generate_response(b"200 OK", b"text/javascript; charset=utf-8", readBytes("functions.js"))
-        elif "/image/" in path:
-            imagePath = "image/" + pathParser(path, "/image/") # get the image path from path
-            return generate_response(b"200 OK", b"image/jpeg", readBytes(imagePath))
-        elif path == "/users":     # Retrieve all records
+            response = generate_response(b"200 OK", b"text/javascript; charset=utf-8", readBytes("functions.js"))
+        elif re.search("/image/(.)+(jpg)$", path):
+            imageName = getStringAfter("/image/", path).replace("/", "") # "/" in image name NOT allowed in the file path
+            response = generate_response(b"200 OK", b"image/jpeg", readBytes("image/" + imageName))
+        elif path == "/users":                           # Retrieve all records
             allRecords = getAllRecords(chat_collection)
-            return generate_response(b"200 OK", b"application/json", allRecords.encode())
-        elif "/users/" in path: # to retriece single record from path "/users/{id}": /users/1...
+            response = generate_response(b"200 OK", b"application/json", allRecords.encode())
+        elif re.search("/users/[0-9]+", path): # to retriece single record from path "/users/{id}": /users/1...
             # Assume that all {id} are well-formed integers.
-            userID = pathParser(path, "/users/")       # get the record id from path
-            record = chat_collection.find_one({"id": int(userID)}, {"_id": False}) # find single record according to id
-            if record == None:
-                return generate_response(b"404 Not Found", b"text/html; charset=utf-8", b"<h1>No record in the database</h1>")
-            else:
-                return generate_response(b"200 OK", b"application/json", json_util.dumps(record).encode())
-
-        return generate_response(b"404 Not Found", b"text/html; charset=utf-8", b"<h1>Sorry, page path cannot be found! GET Method </h1>")
+            userID = int(getStringAfter("/users/", path))                     # get the record id from path
+            record = chat_collection.find_one({"id": userID}, {"_id": False}) # find single record according to userID
+            
+            if record: # find single record according to id
+                response = generate_response(b"200 OK", b"application/json", json_util.dumps(record).encode())
+                
+        return response
 
     # Parse POST request and create proper response
     def parsePOST(self, path, headers, body):
         
-        # Parse "/users" path
+        response = generate_response(b"404 Not Found", b"text/html; charset=utf-8", b"<h1>404 Not Found: parsePOST Method </h1>")
+        
+        # Parse creating single user in "/users" path
         if path == "/users" and headers["Content-Type"] == "application/json": # if "/users" path and json type, then add a user with new id
             bodyObj = json.loads(body.decode())                                # convert json into python obj
             bodyObj["id"] = generateNextID(userID_collection)                  # assign an ID for the new user
             chat_collection.insert_one(bodyObj)                                # create records in database
             createdRecord = chat_collection.find_one(bodyObj, {"_id": False})  # get created record but don't show "_id"
             jsonBody = json_util.dumps(createdRecord)                       
-            return generate_response(b"201 Created", b"application/json", jsonBody.encode())
+            response = generate_response(b"201 Created", b"application/json", jsonBody.encode())
 
-        # Parse multi-part form
+        # Parse multi-part form upload in "/image-upload" path
         elif path == "/image-upload" and "multipart/form-data" in headers["Content-Type"]: # if to submit multipart form, then parse form data
-
             # Parse out imageName and comment parts from multipart form
             formBodyList = formWholeBodyParser(headers, body)         # parse multi-part form's body into a list
             commentPart = formPartBodyParser(formBodyList[0])         # first part of the form is comment
@@ -147,25 +156,26 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             imagePart = formPartBodyParser(formBodyList[1])           # second part of the form is image
 
             # Save {image name: comment} dict to db, and save actual image file on server
-            imageName = "image" + str(generateNextID(imageID_collection)) + ".jpg"        # generate image name
+            imageName = "image/image" + str(generateNextID(imageID_collection)) + ".jpg"  # generate image path name
             image_comment_collection.insert_one({ imageName: escapedComment.decode() })   # store image_name to comment dict to db
-            store_bytes_server_append(imageName, imagePart.content)                       # store actual image file on server disk with new name
+            writeBytes(imageName, imagePart.content)                                      # store actual image file on server disk
 
             # Load imageName_to_comment dict from db
-            list_of_dicts = json.loads(getAllRecords(image_comment_collection))         # get all records from database
-            template_loop = extractLoop("template.html", "{{loop}}", "{{end_loop}}")    # get loop template from template.html
+            list_of_dicts = json.loads(getAllRecords(image_comment_collection))           # get all records from database
+            template_loop = extractLoop("template.html", "{{loop}}", "{{end_loop}}")      # get loop template from template.html
             rendered_loop = "" # rendered loop to replace the template loop
             for image_to_comment_dict in list_of_dicts:  # replace loop template with all {path: comment} pairs
-                for path, comment in image_to_comment_dict.items():
-                    rendered_loop += renderLoop(template_loop, path, comment) # add up rendered loops
-            
-            # Return rendered template file with new rendered loops 
+                for imagePath, comment in image_to_comment_dict.items():
+                    rendered_loop += renderLoop(template_loop, imagePath, comment) # add up rendered loops
+                    rendered_loop += "<hr>" # for horizontal line between each image
+
+            # Render template file with newly rendered HTML content
             templateBytes = readBytes("template.html")
             renderedBytes = templateBytes.replace(template_loop.encode(), rendered_loop.encode())
             writeBytes("index.html", renderedBytes)                                # replace index.html with new render template
-            return generate_response(b"301 Moved Permanently", b" ", b" ", b"/")
+            response = generate_response(b"301 Moved Permanently", b" ", b" ", b"/")
          
-        return generate_response(b"404 Not Found", b"text/html; charset=utf-8", b"<h1>404 Not Found at parsePOST()</h1>")
+        return response
 
 
 if __name__ == "__main__":
@@ -175,6 +185,9 @@ if __name__ == "__main__":
     chat_collection = get_database("chat")                   # create "chatCollection" collection
     imageID_collection = get_database("imageID")             # create "imageID" collection
     image_comment_collection = get_database("image_comment") # create "imageID" collection
+    
+    # image_comment_collection.delete_many({})
+    # imageID_collection.delete_many({})
 
     print("Server's data:")
     print(json.loads(getAllRecords(image_comment_collection)))
@@ -183,6 +196,9 @@ if __name__ == "__main__":
     HOST, PORT = "0.0.0.0", 8000
     server = socketserver.ThreadingTCPServer((HOST, PORT), MyTCPHandler)
     server.serve_forever()
+
+
+
 
 # sudo lsof -i:5000          ---> find process using port 5000
 # kill $PID                  ---> kill the process on that port

@@ -6,10 +6,9 @@ from pymongo import MongoClient
 def get_database(collection: str):
     # Provide the mongodb atlas url to connect python to mongodb using pymongo
     CONNECTION_STRING = "mongo"
-    CONNECTION_STRING2 = "mongodb+srv:/ter0.fx2hgh6.mongodb.net/?retryWrites=true&w=majority"
 
     # Create a connection using MongoClient
-    mongo_client = MongoClient(CONNECTION_STRING2) # create instance
+    mongo_client = MongoClient(CONNECTION_STRING) # create instance
     db = mongo_client["CS312"]
 
     # Create the database
@@ -36,15 +35,20 @@ def getAllRecords(collection):
         records.append(record)
     return json_util.dumps(records) # return as json object
 
-def store_bytes_server_append(filename, content): # (string, bytes) -> bytes
-    exist = os.path.exists(filename)
-    with open(filename, "wb" if not exist else "ab") as f:
-            f.write(content)
-
-def load_bytes_server(filename): # -> bytes
+# Read filename by and output bytes
+def readBytes(filename):
     assert os.path.exists(filename) == True, "The file: " + filename + " does not exist."
     with open(filename, 'rb') as f:
+        print("Reading file: " + filename)
         return f.read()
+    
+def writeBytes(filename, content):
+    if os.path.exists(filename):
+        print("The file: " + filename + " already exist, overwriting...")
+
+    with open(filename, "wb") as f:
+        print("Writing file " + filename)
+        return f.write(content)
 
 # text = "OMG!"
 # storeToFile("comments.txt", text)
