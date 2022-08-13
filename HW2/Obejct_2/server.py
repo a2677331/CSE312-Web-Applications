@@ -118,8 +118,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         elif path == "/functions.js":
             response = generate_response(b"200 OK", b"text/javascript; charset=utf-8", readBytes("functions.js"))
         elif re.search("/image/(.)+(jpg)$", path):
-            imageName = getStringAfter("/image/", path)
-            imageName = imageName.replace("/", "") # "/" in image name NOT allowed in the file path
+            imageName = getStringAfter("/image/", path).replace("/", "") # "/" in image name NOT allowed in the file path
             response = generate_response(b"200 OK", b"image/jpeg", readBytes("image/" + imageName))
         elif path == "/users":                           # Retrieve all records
             allRecords = getAllRecords(chat_collection)
@@ -196,8 +195,6 @@ if __name__ == "__main__":
     # Setup Server connection
     HOST, PORT = "0.0.0.0", 8000
     server = socketserver.ThreadingTCPServer((HOST, PORT), MyTCPHandler)
-    sys.stdout.flush() # needed to use combine with docker
-    sys.stderr.flush() # whatever you have buffer, print it out to the screen
     server.serve_forever()
 
 
