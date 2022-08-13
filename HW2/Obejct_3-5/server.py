@@ -223,8 +223,6 @@ if __name__ == "__main__":
     server.serve_forever()
 
 
-
-
 # sudo lsof -i:5000          ---> find process using port 5000
 # kill $PID                  ---> kill the process on that port
 # kill -9 $PID               ---> to forcefully kill the port
