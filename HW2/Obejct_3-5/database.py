@@ -8,9 +8,6 @@ def get_database(collection: str):
     # for local mongo DB
     # CONNECTION_STRING = "mongodb://localhost:27017" 
     
-    # for local host to connect to remote mongodb
-    # CONNECTION_STRING = "mongodb+srv://a2677331:Aa089089@cluster0.fx2hgh6.mongodb.net/?retryWrites=true&w=majority"
-
     # for docker container
     CONNECTION_STRING = "mongo"
 
