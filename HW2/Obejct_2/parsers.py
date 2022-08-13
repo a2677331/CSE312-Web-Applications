@@ -55,12 +55,6 @@ def splitFormBodyAsList(headers, body): # -> list of form part bodys
     bodySplits = splits[1:-1]   # don't want first empty part and last part that contains part of last boundary
     return bodySplits # [comment part, image part]
 
-def getFormBodyPartByName(bodySplits, bodyName):
-    for name in bodySplits:
-        if name == bodyName:
-            return bodySplits[0]
-    return None
-
 # return loop placeholder with rendered loop content -> String
 def renderLoop(loop_template, path, comment):
     loop_template = loop_template.replace("{{image_path}}", "\"" + path + "\"" + "class=\"my_image\"") # replace with "image path"

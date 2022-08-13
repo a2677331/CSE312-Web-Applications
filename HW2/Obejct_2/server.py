@@ -26,13 +26,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
          
         # Handle buffer
         self.handleBuffer(parsedRequest)
-        
-        print("Printing body")
-        with open("body.txt", "w") as f:
-            c = f.write("Hello")
-        print('Absolute path of file:     ', os.path.abspath(__file__))
-        print('Absolute directoryname: ', os.path.dirname(os.path.abspath(__file__)))
-        print("Finished!!!!")
 
         # Handle request
         response = self.handleRequest(parsedRequest)
