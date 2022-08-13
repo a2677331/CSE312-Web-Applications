@@ -115,8 +115,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         if path == "/" or path == "/index.html":
             # generate token for each page load
             xsrf_token = str(uuid4())
-            token_collection.insert_one({"xsrf_token": xsrf_token}) # insert token for each page load?????????????????????
-            print("Inserting token: ", xsrf_token)
+            token_collection.insert_one({"xsrf_token": xsrf_token}) # insert token for each page load
             addedTokenPage = renderPlaceholder("{{xsrf_token}}", xsrf_token, "index.html")
             response = generate_response(b"200 OK", b"text/html; charset=utf-8", addedTokenPage.encode())
             
@@ -166,7 +165,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             tokenString = parsedTokenPart.content.decode()
             
             if token_collection.find_one({"xsrf_token": tokenString}) is None:
-                print("Resutl: ", token_collection.find_one({"token": tokenString}))
                 return generate_response(b"403 Forbidden")
 
             # Parse out imageName and comment parts from multipart form
@@ -209,11 +207,11 @@ if __name__ == "__main__":
     image_comment_collection = get_database("image_comment") # create "imageID" collection
     token_collection = get_database("token")                 # create "token" collection
     
-    image_comment_collection.delete_many({})
-    imageID_collection.delete_many({})
-    userID_collection.delete_many({})
-    chat_collection.delete_many({})
-    token_collection.delete_many({})
+    # image_comment_collection.delete_many({})
+    # imageID_collection.delete_many({})
+    # userID_collection.delete_many({})
+    # chat_collection.delete_many({})
+    # token_collection.delete_many({})
 
     print("Server's data:")
     print(json.loads(getAllRecords(image_comment_collection)))
