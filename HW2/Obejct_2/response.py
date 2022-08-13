@@ -1,13 +1,13 @@
 # Construct 200 status response and send out thorught HTTP
-def generate_response(status: bytes, mimeType: bytes, respBody=b"", location=b""):
-    
-    # for 204 No Content
-    if len(mimeType) == 0 and len(respBody) == 0:     
-        return b"HTTP/1.1 " + status + b"\r\nContent-Length: 0"
-
-    # for 301 Moved Permanently, jump to another path in location
+def generate_response(status: bytes, mimeType = b"text/plain", respBody=b"", location=b""):
     response = b"HTTP/1.1 " + status
-    if len(location) > 0: 
+        
+    # for 204 No Content and 403 Forbidden
+    if b"204" in status or b"403" in status:     
+        return response
+    
+    # for 301 Moved Permanently
+    if b"301" in status: 
         response += (b"\r\nLocation: " + location)
         
     # for 200 OK, 201 Created, 404 Not Found
@@ -19,3 +19,5 @@ def generate_response(status: bytes, mimeType: bytes, respBody=b"", location=b""
         response += b"\r\n\r\n" + respBody
 
     return response # raw bytes
+
+    

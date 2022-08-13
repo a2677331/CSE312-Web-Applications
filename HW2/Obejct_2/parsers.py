@@ -47,13 +47,19 @@ class formPartBodyParser:
         valueOfName = valueOfName[:endingIndex]
         return valueOfName
 
-def formWholeBodyParser(headers, body): # -> list of form part bodys
+def splitFormBodyAsList(headers, body): # -> list of form part bodys
     boundaryBytes = getBoundary(headers).encode()
     splits = body.split(boundaryBytes)
     assertAns = "Body content splits number: " + str(len(splits)) +  ", please check your form body"     #???????????????????????????????????????????????????????????????????????????????????????
-    assert len(splits) == 4, assertAns
+    assert len(splits) == 5, assertAns
     bodySplits = splits[1:-1]   # don't want first empty part and last part that contains part of last boundary
     return bodySplits # [comment part, image part]
+
+def getFormBodyPartByName(bodySplits, bodyName):
+    for name in bodySplits:
+        if name == bodyName:
+            return bodySplits[0]
+    return None
 
 # return loop placeholder with rendered loop content -> String
 def renderLoop(loop_template, path, comment):
@@ -62,6 +68,11 @@ def renderLoop(loop_template, path, comment):
     loop_template = loop_template.lstrip(start_loop) # remove {{loop}}
     loop_template = loop_template.rstrip(end_loop)   # remove {{end_loop}}
     return loop_template
+
+def renderPlaceholder(placeholder: str, value: str,filename: str):
+    with open(filename, 'r') as f:
+        content = f.read()
+        return content.replace(placeholder, value)
 
 # for the whole loop content including {{loop}} and {{end_loop}}
 def extractLoop(filename, prefix, suffix): 

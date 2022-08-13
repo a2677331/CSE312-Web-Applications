@@ -6,9 +6,11 @@ from bson import json_util
 from request import Request, getParsedRequest
 from response import generate_response
 from database import generateNextID, getAllRecords, get_database, readBytes, writeBytes
-from parsers import formPartBodyParser, formWholeBodyParser, getStringAfter, renderLoop, extractLoop
+from parsers import formPartBodyParser, getStringAfter, renderLoop, extractLoop, renderPlaceholder, splitFormBodyAsList
 from security import escapeInput
 import re
+from uuid import uuid4
+import os
     
 
 # MyTCPHandler is also a base handler inherited from BaseRequestHandler
@@ -21,16 +23,22 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         # Get request data
         received_data = self.request.recv(1024) # read data from TCP socket
         parsedRequest = getParsedRequest(received_data)
-        
+         
         # Handle buffer
         self.handleBuffer(parsedRequest)
+        
+        print("Printing body")
+        with open("body.txt", "w") as f:
+            c = f.write("Hello")
+        print('Absolute path of file:     ', os.path.abspath(__file__))
+        print('Absolute directoryname: ', os.path.dirname(os.path.abspath(__file__)))
+        print("Finished!!!!")
 
         # Handle request
         response = self.handleRequest(parsedRequest)
 
         # Send out response through HTTP
         self.sendFile(response)
-        print("Response sent.\n")
         
     def handleBuffer(self, parsedRequest):
         # initialize total content body length and initialize buffer with request body 
@@ -112,7 +120,13 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         # for css requests
 
         if path == "/" or path == "/index.html":
-            response = generate_response(b"200 OK", b"text/html; charset=utf-8", readBytes("index.html"))
+            # generate token for each page load
+            xsrf_token = str(uuid4())
+            token_collection.insert_one({"xsrf_token": xsrf_token}) # insert token for each page load?????????????????????
+            print("Inserting token: ", xsrf_token)
+            addedTokenPage = renderPlaceholder("{{xsrf_token}}", xsrf_token, "index.html")
+            response = generate_response(b"200 OK", b"text/html; charset=utf-8", addedTokenPage.encode())
+            
         elif path == "/style.css":
             response = generate_response(b"200 OK", b"text/css; charset=utf-8", readBytes("style.css"))
         elif path == "/functions.js":
@@ -150,16 +164,30 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
         # Parse multi-part form upload in "/image-upload" path
         elif path == "/image-upload" and "multipart/form-data" in headers["Content-Type"]: # if to submit multipart form, then parse form data
+            # Split the multipart form into list of bodies
+            formBodySplits = splitFormBodyAsList(headers, body)
+            
+            # Security: check if valid token
+            tokenBody = formBodySplits[0]     # get token part of the form
+            parsedTokenPart = formPartBodyParser(tokenBody)
+            tokenString = parsedTokenPart.content.decode()
+            
+            if token_collection.find_one({"xsrf_token": tokenString}) is None:
+                print("Resutl: ", token_collection.find_one({"token": tokenString}))
+                return generate_response(b"403 Forbidden")
+
             # Parse out imageName and comment parts from multipart form
-            formBodyList = formWholeBodyParser(headers, body)         # parse multi-part form's body into a list
-            commentPart = formPartBodyParser(formBodyList[0])         # first part of the form is comment
-            escapedComment = escapeInput(commentPart.content)         # Security: escape user submissions of "&", "<" and ">"
-            imagePart = formPartBodyParser(formBodyList[1])           # second part of the form is image
+            commentBody = formBodySplits[1]   # get comment part of the form
+            parsedCommentPart = formPartBodyParser(commentBody)             
+            escapedCommentPart = escapeInput(parsedCommentPart.content)                # Security: advoid HTML injection
+
+            imageBody = formBodySplits[2]      # get image part of the form
+            parsedImagePart = formPartBodyParser(imageBody)              
 
             # Save {image name: comment} dict to db, and save actual image file on server
             imageName = "image/image" + str(generateNextID(imageID_collection)) + ".jpg"  # generate image path name
-            image_comment_collection.insert_one({ imageName: escapedComment.decode() })   # store image_name to comment dict to db
-            writeBytes(imageName, imagePart.content)                                      # store actual image file on server disk
+            image_comment_collection.insert_one({ imageName: escapedCommentPart.decode() })   # store image_name to comment dict to db
+            writeBytes(imageName, parsedImagePart.content)                                      # store actual image file on server disk
 
             # Load imageName_to_comment dict from db
             list_of_dicts = json.loads(getAllRecords(image_comment_collection))           # get all records from database
@@ -174,7 +202,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             templateBytes = readBytes("template.html")
             renderedBytes = templateBytes.replace(template_loop.encode(), rendered_loop.encode())
             writeBytes("index.html", renderedBytes)                                # replace index.html with new render template
-            response = generate_response(b"301 Moved Permanently", b" ", b" ", b"/")
+            response = generate_response(b"301 Moved Permanently", b"", b"", b"/")
          
         return response
 
@@ -186,9 +214,13 @@ if __name__ == "__main__":
     chat_collection = get_database("chat")                   # create "chatCollection" collection
     imageID_collection = get_database("imageID")             # create "imageID" collection
     image_comment_collection = get_database("image_comment") # create "imageID" collection
+    token_collection = get_database("token")                 # create "token" collection
     
-    # image_comment_collection.delete_many({})
-    # imageID_collection.delete_many({})
+    image_comment_collection.delete_many({})
+    imageID_collection.delete_many({})
+    userID_collection.delete_many({})
+    chat_collection.delete_many({})
+    token_collection.delete_many({})
 
     print("Server's data:")
     print(json.loads(getAllRecords(image_comment_collection)))

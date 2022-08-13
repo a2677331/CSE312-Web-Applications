@@ -5,6 +5,13 @@ from pymongo import MongoClient
 # Setup database connection
 def get_database(collection: str):
     # Provide the mongodb atlas url to connect python to mongodb using pymongo
+    # for local mongo DB
+    # CONNECTION_STRING = "mongodb://localhost:27017" 
+    
+    # for local host to connect to remote mongodb
+    # CONNECTION_STRING = "mongodb+srv://a2677331:Aa089089@cluster0.fx2hgh6.mongodb.net/?retryWrites=true&w=majority"
+
+    # for docker container
     CONNECTION_STRING = "mongo"
 
     # Create a connection using MongoClient
@@ -24,7 +31,7 @@ def generateNextID(ID_collection):
 # Get User ID from id collection
 def getID(ID_collection):
     if ID_collection.count_documents({}) == 0: # if no id was found
-        ID_collection.insert_one({"id": 0}) # create id with 0
+        ID_collection.insert_one({"id": 0})    # create id with 0
     assert ID_collection.count_documents({}) == 1, "ID is either empty or more than 1"
     return ID_collection.find_one({})["id"]
 
