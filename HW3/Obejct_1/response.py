@@ -10,7 +10,6 @@ def generate_response(status: bytes, mimeType = b"text/plain", respBody=b"", loc
         response += b"\r\nUpgrade: " + respBody           # use respbody as upgrade header
         response += b"\r\nConnection: " + mimeType          # use mimeType as connection header
         response += b"\r\nSec-WebSocket-Accept: " + location + b"\r\n\r\n" # use location as sec_websockey_accept header, must have "\r\n\r\n" even without a body
-        writeBytes("RESP.txt", response)
         
     # for 204 No Content and 403 Forbidden
     elif b"204" in status or b"403" in status:

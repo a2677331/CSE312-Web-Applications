@@ -18,10 +18,3 @@ def get_base64(sha1_hashed_bytes: bytes):  # -> bytes
 def get_websocket_accept(websocket_key: str):   # -> bytes
     hased_bytes = get_sha1_hash(websocket_key)  # -> bytes
     return get_base64(hased_bytes)              # -> str
-
-if __name__ == "__main__":
-    print()
-    if get_websocket_accept(sec_websocket_key) == "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=":
-        print("True")
-    else:
-        print("False")
