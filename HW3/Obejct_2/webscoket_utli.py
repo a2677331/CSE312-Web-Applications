@@ -165,7 +165,6 @@ if __name__ == '__main__':
         
     data = websocketParser(bytes)
 
-
     
     # 0000101: 7 bits
     # payload length is 5 bytes: 0000101

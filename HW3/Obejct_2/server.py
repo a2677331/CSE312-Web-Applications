@@ -75,7 +75,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
         # Starting websocket connection
         while True:
-            # TODO: still need to add buffer in future
             print(" \n---------- ************** Receiving websocket frame: ---------- ************** ")
             received_data = self.request.recv(1024) # read data from TCP socket
             
