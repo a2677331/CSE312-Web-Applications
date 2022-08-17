@@ -6,18 +6,26 @@ GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 class websocketParser():
 
-    first_8_bits_closed = 136  # 10001000
-    first_8_bits_connect = 129 # 10000001
+    to_close = 136  # 10001000
+    to_connect = 129 # 10000001
     
     def __init__(self, raw_bytes: bytes):
         print("\n @@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Parsing up coming frame: @@@@@@@@@@@@@@@@@@@@@@@@@@@@@ ")
         print_binary(raw_bytes)
-        print(" @@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Make sure the info above is correct before parsing @@@@@@@@@@@@@@@@@@@@@@@@@@@@@ \n")
+        print("\n @@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Make sure the info above is correct before parsing @@@@@@@@@@@@@@@@@@@@@@@@@@@@@ \n")
         
         self.bits = getBitsFromBytes(raw_bytes) # Convert raw bytes string to binary string
         self.mask_flag, self.seven_bits = get_second_8_bits(self.bits)
         self.mask_bits, self.masked_payload_bits = parse_second_8_bits(self.mask_flag, self.seven_bits, self.bits)
         self.payload_bytes = get_payload_bytes(self.mask_bits, self.masked_payload_bits)
+
+
+def is_close_frame(bits: str):
+    first_8_bits = getBinaryFromNthBytes(bits, 1)
+    if int(first_8_bits, 2) == websocketParser.to_close:
+        return True
+    else:
+        return False
 
 # Parse second 8 bits:
 def get_second_8_bits(bits: str):

@@ -9,29 +9,17 @@ from parsers import formPartBodyParser, getStringAfter, renderLoop, extractLoop,
 from security import escapeInput
 import re
 from uuid import uuid4
-from webscoket_utli import get_websocket_accept, websocketParser, get_length_bits_from, bitstring_to_bytes, binary_to_string
+from webscoket_utli import get_websocket_accept, websocketParser, get_length_bits_from, bitstring_to_bytes, is_close_frame, print_binary
 import random
-
-    
-    
-def print_binary(raw_bytes: bytes):
-    count = 0
-    for unicode_code in raw_bytes:
-        count += 1
-        print( format(unicode_code, '08b'), end=" ") # print leading 0s up to 8, binary
-        if count % 4 == 0:
-            print()
-
 
 # MyTCPHandler is also a base handler inherited from BaseRequestHandler
 class MyTCPHandler(socketserver.BaseRequestHandler):
 
-    clients = []
-    response = None
-    
+    # TODO need to send to all clients...
+    clients = []     # TODO send to all clients in here
+    response = None  # response from server
     total_length = 0 # total length of a large data
     buffer = b""     # current buffer data
-    counter = 1
 
     def handle(self):
         # Get request data
@@ -92,42 +80,43 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             received_data = self.request.recv(1024) # read data from TCP socket
             
             if len(received_data) != 0:
+                # Parse the received data as websocket format
+                payload_data = websocketParser(received_data) # Parse websocket request
+
+                # Is is to close websocket request? 
+                if is_close_frame(payload_data.bits):
+                    return
                 
                 # Parse received data as WebSocket frame
                 print_binary(received_data)
-                payload_data = websocketParser(received_data) # Parse websocket request
                 jsonObj = payload_data.payload_bytes.decode() # decode as JSON obj
                 py_dict =  json.loads(jsonObj)                # each payload is a JSON dict
                 print("\n ---------- ************** End of Receiving websocket frame ---------- ************** ")
                 
-                # TODO: Store data into db, will have 4 differernt message Type in future homework
-                py_dict["username"] = "User" + str(random.randint(0, 1000))        # add username to message
-                py_dict["comment"] = escapeInput(py_dict["comment"])    # escaped user comment
-                user_messages_collection.insert_one(py_dict)                       # insert into database
-                del py_dict["_id"]                    # don't want _id added from mongoDB
+                py_dict["username"] = "User" + str(random.randint(0, 1000))  # add username to message
+                py_dict["comment"] = escapeInput(py_dict["comment"])         # escaped user comment
+                user_messages_collection.insert_one(py_dict)                 # insert into database
+                del py_dict["_id"]                                           # don't want _id added from mongoDB
 
                 self.sendFrame(py_dict)
                 
-    
+   # Send a websocket frame from payload
     def sendFrame(self, payload_dict):
-        # TODO: need to send to all connected WebSocket clients
-        # now generate a websocket frame and send back to clients
-        encodedPayload = json.dumps(payload_dict).encode()
-        first_8_bits = bin(129).lstrip("0b").zfill(8)                    # first 8 bits of the socket frame, or close 10001000==136
-        second_8_bits = "0" +  get_length_bits_from(len(encodedPayload))
-        websocket_frame_bytes = bitstring_to_bytes(first_8_bits + second_8_bits) + encodedPayload
-
+        encoded_payload = json.dumps(payload_dict).encode()  # encoded payload from dict
+        first_8_bits = bin(129).lstrip("0b").zfill(8)        # first 8 bits, if need to close the websocket, use bin(136) 
+        second_8_bits = "0" +  get_length_bits_from(len(encoded_payload)) # second 8 bits
+        websocket_frame_bytes = bitstring_to_bytes(first_8_bits + second_8_bits) + encoded_payload
+        self.sendFile(websocket_frame_bytes)                 # send data to client if there's one
+        
         print(" \n---------- ************** Sending websocket frame: ---------- ************** ")
         print("FIRST_8_BIT = ", first_8_bits)
         print("SECOND_8_BIT = ", second_8_bits)
-        print("Payload is: ", encodedPayload)
-        print("Payload length: ", len(encodedPayload))
+        print("Payload is: ", encoded_payload)
+        print("Payload length: ", len(encoded_payload))
         print("Encoded Frame: ", websocket_frame_bytes, "\n")
         print("FRAME in binary string: ") 
         print_binary(websocket_frame_bytes)
         print(" ---------- ************** End of Sending websocket frame ---------- ************** ")
-        
-        self.sendFile(websocket_frame_bytes)                 # send data to client if there's one
     
     # Parse HTTP request data and return HTTP response
     def handleRequest(self, request):
@@ -166,7 +155,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             filter = {"id": pathID}
             newRecord = {"email": bodyObj["email"], "username": bodyObj["username"]}
             result = chat_collection.update_one(filter, {"$set": newRecord})             # update new record under pathID 
-            assert result.modified_count == 1, "Update failed, maybe record does not exist in the database?"
             return generate_response(b"200 OK", b"application/json", json.dumps(newRecord).encode())
 
     # Parse GET request and create proper response
@@ -227,10 +215,8 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
             response = generate_response(b"200 OK", b"text/html; charset=utf-8", readBytes("ws.html"))
         
         elif request.path == "/chat-history":
-            # For testing sample
-            data = [{"messageType": "chatMessage", "comment": "Fake from chat history1", "username": "chat history1"},
-                    {"messageType": "chatMessage", "comment": "Fake from chat history2", "username": "chat history2"}]
-            response = generate_response(b"200 OK", b"application/json", json_util.dumps(data).encode())
+            allRecords = getAllRecords(user_messages_collection) 
+            response = generate_response(b"200 OK", b"application/json", allRecords.encode())
                 
         return response
 
@@ -301,12 +287,12 @@ if __name__ == "__main__":
     token_collection = get_database("token")                 # create "token" collection
     user_messages_collection = get_database("userMessages")  # create "userMessages" collection for WebSocket
     
-    image_comment_collection.delete_many({})
-    imageID_collection.delete_many({})
-    userID_collection.delete_many({})
-    chat_collection.delete_many({})
-    token_collection.delete_many({})
-    user_messages_collection.delete_many({})
+    # image_comment_collection.delete_many({})
+    # imageID_collection.delete_many({})
+    # userID_collection.delete_many({})
+    # chat_collection.delete_many({})
+    # token_collection.delete_many({})
+    # user_messages_collection.delete_many({})
 
     print("Server's data:")
     print(json.loads(getAllRecords(image_comment_collection)))
