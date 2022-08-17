@@ -83,7 +83,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 payload_data = websocketParser(received_data) # Parse websocket request
 
                 # Is is to close websocket request? 
-                if is_close_frame(payload_data.bits):
+                if is_close_frame(payload_data.frame_bits):
                     return
                 
                 # Parse received data as WebSocket frame

@@ -14,9 +14,9 @@ class websocketParser():
         print_binary(raw_bytes)
         print("\n @@@@@@@@@@@@@@@@@@@@@@@@@@@@@ Make sure the info above is correct before parsing @@@@@@@@@@@@@@@@@@@@@@@@@@@@@ \n")
         
-        self.bits = getBitsFromBytes(raw_bytes) # Convert raw bytes string to binary string
-        self.mask_flag, self.seven_bits = get_second_8_bits(self.bits)
-        self.mask_bits, self.masked_payload_bits = parse_second_8_bits(self.mask_flag, self.seven_bits, self.bits)
+        self.frame_bits = getBitsFromBytes(raw_bytes) # Convert raw bytes string to binary string
+        self.mask_flag, self.seven_bits = get_second_8_bits(self.frame_bits)
+        self.mask_bits, self.masked_payload_bits = parse_second_8_bits(self.mask_flag, self.seven_bits, self.frame_bits)
         self.payload_bytes = get_payload_bytes(self.mask_bits, self.masked_payload_bits)
 
 
