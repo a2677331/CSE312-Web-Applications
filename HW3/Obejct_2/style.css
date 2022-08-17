@@ -1,0 +1,13 @@
+
+body {
+    background-color: blue;
+    color: white;
+}
+
+.my_image {
+    width: 120px;
+}
+
+.websocket-chat {
+    color: rgb(219, 3, 3);
+}
