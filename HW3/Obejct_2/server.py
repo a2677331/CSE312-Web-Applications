@@ -16,12 +16,13 @@ import random
 class MyTCPHandler(socketserver.BaseRequestHandler):
 
     # TODO need to send to all clients...
-    clients = []     # TODO send to all clients in here
+    websocket_connections = []     # TODO send to all clients in here
     response = None  # response from server
     total_length = 0 # total length of a large data
     buffer = b""     # current buffer data
 
     def handle(self):
+        self.client_address
         # Get request data
         received_data = self.request.recv(1024) # read data from TCP socket
 
@@ -60,10 +61,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         # restore buffer to original state
         self.restoreBuffer()
 
-    def sendFile(self, response):
-        sys.stdout.flush() # needed to use combine with docker
-        sys.stderr.flush() # whatever you have buffer, print it out to the screen
-        self.request.sendall(response)  # send completed response through HTTP
+
 
     def restoreBuffer(self):
         # restore buffer to original state
@@ -97,15 +95,27 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 user_messages_collection.insert_one(py_dict)                 # insert into database
                 del py_dict["_id"]                                           # don't want _id added from mongoDB
 
-                self.sendFrame(py_dict)
+                self.send_frame_to_all(py_dict)
                 
+    def sendFile(self, response):
+        sys.stdout.flush() # needed to use combine with docker
+        sys.stderr.flush() # whatever you have buffer, print it out to the screen
+        self.request.sendall(response)  # send completed response through HTTP                
+
    # Send a websocket frame from payload
-    def sendFrame(self, payload_dict):
+    def send_frame_to_all(self, payload_dict):
         encoded_payload = json.dumps(payload_dict).encode()  # encoded payload from dict
         first_8_bits = bin(129).lstrip("0b").zfill(8)        # first 8 bits, if need to close the websocket, use bin(136) 
         second_8_bits = "0" +  get_length_bits_from(len(encoded_payload)) # second 8 bits
         websocket_frame_bytes = bitstring_to_bytes(first_8_bits + second_8_bits) + encoded_payload
-        self.sendFile(websocket_frame_bytes)                 # send data to client if there's one
+        # self.sendFile(websocket_frame_bytes)                 # send data to client if there's one
+
+        # Send frame to all the websocket connections
+        sys.stdout.flush() # needed to use combine with docker
+        sys.stderr.flush() # whatever you have buffer, print it out to the screen
+        self.websocket_connections.append(self) # add new client into websocket connections list
+        for connection in self.websocket_connections:
+            connection.request.sendall(websocket_frame_bytes)
         
         print(" \n---------- ************** Sending websocket frame: ---------- ************** ")
         print("FIRST_8_BIT = ", first_8_bits)
