@@ -10,7 +10,7 @@ docker-compose up --build
 - Now open the URL in your browser: http://localhost:8080/
 
 ### [Homework 1](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1)
-- Build the foundation for the web server, can host static website (HTML/CSS/JavaScript/Image) with RESTful API (Retrieve/Update/Delete). \
+- Build a basic web server that can host static website (HTML/CSS/JavaScript/Image) with RESTful API (Retrieve/Update/Delete). \
 [Object 1](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1/Object_1) ✅ Done! \
 [Object 2](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1/Object_2) ✅ Done! \
 [Object 3](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1/Object_3) ✅ Done! \
