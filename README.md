@@ -7,7 +7,7 @@
 ```
 docker-compose up --build 
 ```
-- Now open the URL in your browser: http://localhost:8000/
+- Now open the URL in your browser: http://localhost:8080/
 
 ### [Homework 1](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1) ✅ Done!
 - [Object 1](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1/Object_1)
