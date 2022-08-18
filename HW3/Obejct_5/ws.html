@@ -1,0 +1,33 @@
+<html>
+
+<head>
+    <title>CSE312 Sample Front End</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+
+<body onload="welcome();">
+
+    <h1>CSE312 Sample Page</h1>
+
+    <p id="paragraph">
+        This text is from the HTML file 🙂
+    </p>
+
+    <label for="chat-comment" class="websocket-chat">Chat: </label>
+    <input id="chat-comment" type="text" name="comment">
+    <button onclick="sendMessage()" class="websocket-chat">Send</button>
+    <div id="chat"></div>
+    <br />
+
+
+    <button onclick="startVideo()">Start My Video</button> <br />
+    <button onclick="connectWebRTC()">Start Video Chat</button> <br />
+    <video id="myVideo" autoplay muted></video> <br />
+    <video id="otherVideo" autoplay></video>
+
+    <hr>
+
+    <script src="functions.js"></script>
+</body>
+
+</html>
