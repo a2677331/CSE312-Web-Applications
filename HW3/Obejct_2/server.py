@@ -101,9 +101,9 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
                 self.send_frame_to_all(py_dict)
                 
     def sendFile(self, response):
+        self.request.sendall(response)  # send completed response through HTTP                
         sys.stdout.flush() # needed to use combine with docker
         sys.stderr.flush() # whatever you have buffer, print it out to the screen
-        self.request.sendall(response)  # send completed response through HTTP                
 
    # Send a websocket frame from payload
     def send_frame_to_all(self, payload_dict):
@@ -111,7 +111,6 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         first_8_bits = bin(129).lstrip("0b").zfill(8)        # first 8 bits, if need to close the websocket, use bin(136) 
         second_8_bits = "0" +  get_length_bits_from(len(encoded_payload)) # second 8 bits
         websocket_frame_bytes = bitstring_to_bytes(first_8_bits + second_8_bits) + encoded_payload
-        # self.sendFile(websocket_frame_bytes)                 # send data to client if there's one
 
         # Send frame to all the websocket connections
         if self not in self.websocket_connections:
