@@ -190,10 +190,12 @@ fake_payload_dict = [{"messageType": "chatMessage", "comment": "S", "username": 
 # parsed_frame = websocketParser(websocket_frame_bytes)
 
 
-jsonObj =  json.dumps(fake_payload)   # each payload is a JSON dict
+print()
+t = "This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file 🙂 This text is from the HTML file"
 
-pyObj = json.loads(jsonObj)
+tj = json.dumps(t)
 
-print(pyObj['comment'])
+print(len(tj.encode()))
 
-print(pyObj)
+x = int("11111010", 2)
+print(x)
