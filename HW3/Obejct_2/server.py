@@ -12,11 +12,13 @@ from uuid import uuid4
 from webscoket_utli import get_websocket_accept, websocketParser, get_length_bits_from, bitstring_to_bytes, is_close_frame, print_binary
 import random
 
+
+
 # MyTCPHandler is also a base handler inherited from BaseRequestHandler
 class MyTCPHandler(socketserver.BaseRequestHandler):
 
     # TODO need to send to all clients...
-    websocket_connections = []     # TODO send to all clients in here
+    websocket_connections = set()     # TODO send to all clients in here
     response = None  # response from server
     total_length = 0 # total length of a large data
     buffer = b""     # current buffer data
@@ -82,6 +84,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
                 # Is is to close websocket request? 
                 if is_close_frame(payload_data.frame_bits):
+                    self.websocket_connections.discard(self)
                     return
                 
                 # Parse received data as WebSocket frame
@@ -111,11 +114,10 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         # self.sendFile(websocket_frame_bytes)                 # send data to client if there's one
 
         # Send frame to all the websocket connections
-        sys.stdout.flush() # needed to use combine with docker
-        sys.stderr.flush() # whatever you have buffer, print it out to the screen
-        self.websocket_connections.append(self) # add new client into websocket connections list
+        if self not in self.websocket_connections:
+            self.websocket_connections.add(self) # add new client into websocket connections list
         for connection in self.websocket_connections:
-            connection.request.sendall(websocket_frame_bytes)
+            connection.sendFile(websocket_frame_bytes)
         
         print(" \n---------- ************** Sending websocket frame: ---------- ************** ")
         print("FIRST_8_BIT = ", first_8_bits)
