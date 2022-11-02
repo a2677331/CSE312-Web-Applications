@@ -315,6 +315,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
 
 if __name__ == "__main__":
+    print("hello world!")
 
     # Setup database connection
     userID_collection = get_database("userID")               # create "userID" collection

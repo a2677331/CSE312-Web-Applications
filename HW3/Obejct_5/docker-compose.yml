@@ -8,3 +8,5 @@ services:
       WAIT_HOSTS: mongo:27017
     ports:
       - "8080:8000"
+    volumes:
+      - /Users/zhongjian/Desktop/CSE312/HW3/Obejct_5:/root
