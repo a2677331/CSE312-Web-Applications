@@ -13,3 +13,5 @@ COPY . .
 # CMD python3 server.py
 
 CMD [ "python3", "server.py"]
+
+# very OK
