@@ -7,18 +7,18 @@ Covers the fundamentals of full-stack web development and deployment with a stro
 
 ### Course Assignments:
 
-#### [Homework 1](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1) ✅ Done!
+#### ✅ [Homework 1](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1) 
 - Build a basic web server that can host static files (HTML/CSS/JavaScript/Image) with RESTful API (CRUD). \
 [Object 1](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1/Object_1) \
 [Object 2](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1/Object_2) \
 [Object 3](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1/Object_3) \
 [Object 4](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1/Object_4) 
-#### [Homework 2](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW2) ✅ Done!
+#### ✅ [Homework 2](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW2)
 - Build a danymic front end where users can share comments, and upload images, with each other. \
 [Object 1](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW2/Obejct_1)  \
 [Object 2](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW2/Obejct_2) \
 [Object 3-5](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW2/Obejct_3-5) 
-#### [Homework 3](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW3) (Ongoing)
+#### [Homework 3](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW3) 
 - Implement WebSockets to add a live chat feature, and WebRTC to enable peer-to-peer video chat. \
 [Object 1](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW3/Obejct_1) \
 [Object 2](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW3/Obejct_2) \
