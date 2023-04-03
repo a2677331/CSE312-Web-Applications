@@ -3,9 +3,6 @@
 ### Course Website: 
 https://cse312.com
 
-### Course Description
-Covers the fundamentals of full-stack web development and deployment with a strong emphasis on server-side code and functionality. Students will develop a full-stack web application without the use of a pre-existing web server or web framework. Topics include HTTP, APIs, AJAX, databases, encryption, authentication, sockets, privacy, and security.
-
 ### Course Assignments:
 
 #### ✅ [Homework 1](https://github.com/a2677331/CSE312-Web-Applications/tree/master/HW1) 
